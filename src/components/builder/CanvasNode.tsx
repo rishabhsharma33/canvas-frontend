@@ -2,7 +2,7 @@
 
 import { isValidElement, cloneElement, type ReactElement } from "react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { GripVertical, Trash2 } from "lucide-react";
+import { Copy, GripVertical, Trash2 } from "lucide-react";
 import { useBuilderStore } from "@/lib/builder/store";
 import { getBlockDefinition } from "@/lib/builder/registry";
 import { getStyleClassName } from "@/lib/builder/style-props";
@@ -25,6 +25,7 @@ export function CanvasNode({ nodeId }: { nodeId: string }) {
   const selectedNodeId = useBuilderStore((s) => s.selectedNodeId);
   const selectNode = useBuilderStore((s) => s.selectNode);
   const removeNode = useBuilderStore((s) => s.removeNode);
+  const duplicateNode = useBuilderStore((s) => s.duplicateNode);
 
   const def = getBlockDefinition(node.type);
   const isSelected = selectedNodeId === node.id;
@@ -116,6 +117,16 @@ export function CanvasNode({ nodeId }: { nodeId: string }) {
           <span className="pointer-events-none rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">
             {def.label}
           </span>
+          <button
+            className="pointer-events-auto flex size-5 items-center justify-center rounded bg-primary text-primary-foreground"
+            aria-label="Duplicate block"
+            onClick={(e) => {
+              e.stopPropagation();
+              duplicateNode(node.id);
+            }}
+          >
+            <Copy className="size-3.5" />
+          </button>
           <button
             className="pointer-events-auto flex size-5 items-center justify-center rounded bg-destructive text-destructive-foreground"
             aria-label="Delete block"

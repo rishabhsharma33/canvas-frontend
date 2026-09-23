@@ -66,6 +66,45 @@ export function removeNode(page: BuilderPage, nodeId: string): BuilderPage {
   return { ...page, nodes, updatedAt: new Date().toISOString() };
 }
 
+/** Recursively clones an existing node subtree under a (possibly different) parent, with fresh ids. */
+function cloneSubtree(
+  sourceNodes: Record<string, BuilderNode>,
+  sourceId: string,
+  newParentId: string,
+  targetNodes: Record<string, BuilderNode>
+): string {
+  const source = sourceNodes[sourceId];
+  const newId = uuid();
+  const childIds = source.children.map((childId) =>
+    cloneSubtree(sourceNodes, childId, newId, targetNodes)
+  );
+  targetNodes[newId] = {
+    id: newId,
+    type: source.type,
+    props: { ...source.props },
+    children: childIds,
+    parentId: newParentId,
+  };
+  return newId;
+}
+
+/** Duplicates a node (and its descendants) as a new sibling immediately after it. Root can't be duplicated. */
+export function duplicateNode(page: BuilderPage, nodeId: string): BuilderPage {
+  const node = page.nodes[nodeId];
+  if (!node || node.parentId === null) return page;
+
+  const nodes = { ...page.nodes };
+  const newId = cloneSubtree(page.nodes, nodeId, node.parentId, nodes);
+
+  const parent = nodes[node.parentId];
+  const children = [...parent.children];
+  const index = children.indexOf(nodeId);
+  children.splice(index + 1, 0, newId);
+  nodes[node.parentId] = { ...parent, children };
+
+  return { ...page, nodes, updatedAt: new Date().toISOString() };
+}
+
 /** True if `maybeDescendantId` is `ancestorId` itself or nested anywhere beneath it. */
 export function isDescendant(
   nodes: Record<string, BuilderNode>,

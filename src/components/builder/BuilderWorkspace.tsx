@@ -30,6 +30,8 @@ export function BuilderWorkspace() {
   const handleDrop = useBuilderStore((s) => s.handleDrop);
   const undo = useBuilderStore((s) => s.undo);
   const redo = useBuilderStore((s) => s.redo);
+  const duplicateNode = useBuilderStore((s) => s.duplicateNode);
+  const selectedNodeId = useBuilderStore((s) => s.selectedNodeId);
   const document = useBuilderStore((s) => s.document);
 
   useEffect(() => {
@@ -40,7 +42,7 @@ export function BuilderWorkspace() {
     function onKeyDown(e: KeyboardEvent) {
       const mod = e.metaKey || e.ctrlKey;
       const key = e.key.toLowerCase();
-      if (!mod || (key !== "z" && key !== "y")) return;
+      if (!mod || (key !== "z" && key !== "y" && key !== "d")) return;
 
       const target = e.target as HTMLElement | null;
       const isEditable =
@@ -49,6 +51,13 @@ export function BuilderWorkspace() {
           target.tagName === "TEXTAREA" ||
           target.isContentEditable);
       if (isEditable) return;
+
+      if (key === "d") {
+        if (!selectedNodeId) return;
+        e.preventDefault();
+        duplicateNode(selectedNodeId);
+        return;
+      }
 
       e.preventDefault();
       if (key === "y" || e.shiftKey) {
@@ -59,7 +68,7 @@ export function BuilderWorkspace() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, duplicateNode, selectedNodeId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),

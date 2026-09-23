@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, FileStack, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, Copy, FileStack, Pencil, Plus, Trash2 } from "lucide-react";
 import { useBuilderStore } from "@/lib/builder/store";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +27,7 @@ export function PagesDialog() {
   const switchPage = useBuilderStore((s) => s.switchPage);
   const renamePage = useBuilderStore((s) => s.renamePage);
   const deletePage = useBuilderStore((s) => s.deletePage);
+  const duplicatePage = useBuilderStore((s) => s.duplicatePage);
 
   const activePageName = pages[activePageId]?.name ?? "";
   const pageList = Object.values(pages).sort((a, b) =>
@@ -113,6 +114,14 @@ export function PagesDialog() {
                       aria-label="Rename page"
                     >
                       <Pencil />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => duplicatePage(page.id)}
+                      aria-label="Duplicate page"
+                    >
+                      <Copy />
                     </Button>
                     <Button
                       variant="ghost"

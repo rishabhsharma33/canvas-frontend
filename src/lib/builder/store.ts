@@ -7,7 +7,12 @@ import type {
 } from "./types";
 import * as treeUtils from "./tree-utils";
 import type { DropTargetData } from "./tree-utils";
-import { createBlankPage, createStarterDocument } from "./seed";
+import {
+  clonePage,
+  createBlankPage,
+  createStarterDocument,
+  nextDuplicateName,
+} from "./seed";
 import { loadDocument, saveDocument } from "./persistence";
 import { createSeedNode } from "./registry";
 
@@ -26,6 +31,7 @@ interface BuilderState {
 
   insertNode: (parentId: string, seed: SeedNode, index?: number) => void;
   removeNode: (nodeId: string) => void;
+  duplicateNode: (nodeId: string) => void;
   moveNode: (nodeId: string, newParentId: string, index: number) => void;
   updateNodeProps: (nodeId: string, props: Record<string, unknown>) => void;
   handleDrop: (active: DragActiveData, over: DropTargetData) => void;
@@ -36,6 +42,7 @@ interface BuilderState {
   switchPage: (pageId: string) => void;
   renamePage: (pageId: string, name: string) => void;
   deletePage: (pageId: string) => void;
+  duplicatePage: (pageId: string) => void;
 
   selectNode: (nodeId: string | null) => void;
   setActiveDrag: (id: string | null) => void;
@@ -140,6 +147,28 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
         future: [],
         selectedNodeId:
           state.selectedNodeId === nodeId ? null : state.selectedNodeId,
+      };
+    });
+  },
+
+  duplicateNode: (nodeId) => {
+    flushPendingPropHistory(set);
+    set((state) => {
+      const page = state.document.pages[state.document.activePageId];
+      const node = page.nodes[nodeId];
+      if (!node || node.parentId === null) return state;
+
+      const nextPage = treeUtils.duplicateNode(page, nodeId);
+      const parent = nextPage.nodes[node.parentId];
+      const newNodeId = parent.children[parent.children.indexOf(nodeId) + 1];
+
+      const document = withUpdatedPage(state.document, nextPage);
+      saveDocument(document);
+      return {
+        document,
+        past: [...state.past, state.document].slice(-HISTORY_LIMIT),
+        future: [],
+        selectedNodeId: newNodeId ?? state.selectedNodeId,
       };
     });
   },
@@ -329,6 +358,28 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
           ? Object.keys(pages)[0]
           : state.document.activePageId;
       const document = { ...state.document, pages, activePageId };
+      saveDocument(document);
+      return {
+        document,
+        past: [...state.past, state.document].slice(-HISTORY_LIMIT),
+        future: [],
+        selectedNodeId: null,
+      };
+    });
+  },
+
+  duplicatePage: (pageId) => {
+    flushPendingPropHistory(set);
+    set((state) => {
+      const source = state.document.pages[pageId];
+      if (!source) return state;
+      const existingNames = Object.values(state.document.pages).map((p) => p.name);
+      const cloned = clonePage(source, nextDuplicateName(existingNames, source.name));
+      const document: BuilderDocument = {
+        ...state.document,
+        pages: { ...state.document.pages, [cloned.id]: cloned },
+        activePageId: cloned.id,
+      };
       saveDocument(document);
       return {
         document,
