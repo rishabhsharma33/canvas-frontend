@@ -5,12 +5,14 @@ import {
   EyeOff,
   ExternalLink,
   LayoutDashboard,
+  LogOut,
   Undo2,
   Redo2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useBuilderStore } from "@/lib/builder/store";
+import { useAuthStore } from "@/lib/auth/auth-store";
 import { ExportDialog } from "./ExportDialog";
 import { PagesDialog } from "./PagesDialog";
 
@@ -21,6 +23,8 @@ export function Toolbar() {
   const redo = useBuilderStore((s) => s.redo);
   const canUndo = useBuilderStore((s) => s.past.length > 0);
   const canRedo = useBuilderStore((s) => s.future.length > 0);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
 
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b bg-card px-3">
@@ -83,6 +87,21 @@ export function Toolbar() {
           Open preview tab
         </Button>
         <ExportDialog />
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                variant="outline"
+                size="icon-sm"
+                onClick={() => logout()}
+                aria-label="Log out"
+              >
+                <LogOut />
+              </Button>
+            }
+          />
+          <TooltipContent>{user?.email ?? "Log out"}</TooltipContent>
+        </Tooltip>
       </div>
     </header>
   );

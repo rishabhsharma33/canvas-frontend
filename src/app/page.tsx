@@ -1,5 +1,10 @@
 import { BuilderWorkspace } from "@/components/builder/BuilderWorkspace";
+import { AuthGate } from "@/components/auth/AuthGate";
 
 export default function Home() {
-  return <BuilderWorkspace />;
+  return (
+    <AuthGate>
+      <BuilderWorkspace />
+    </AuthGate>
+  );
 }

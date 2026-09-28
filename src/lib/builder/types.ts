@@ -41,6 +41,10 @@ export interface BuilderPage {
 }
 
 export interface BuilderDocument {
+  /** Server-assigned document id — the document is now owned by a user account. */
+  id: string;
+  /** Backend-only project name (distinct from any individual page's `name`). */
+  name: string;
   schemaVersion: number;
   pages: Record<string, BuilderPage>;
   activePageId: string;

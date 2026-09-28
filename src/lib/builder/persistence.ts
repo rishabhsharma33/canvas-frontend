@@ -1,42 +1,41 @@
 import type { BuilderDocument } from "./types";
-import { SCHEMA_VERSION } from "./seed";
+import { createSeedNode } from "./registry";
+import * as documentsApi from "@/lib/api/documents";
+import * as nodesApi from "@/lib/api/nodes";
 
-const STORAGE_KEY = `dnd-builder:document:v${SCHEMA_VERSION}`;
-const AUTOSAVE_DELAY_MS = 500;
-
-/** Migrations from an older schemaVersion to the current one. Empty for v1 — real chain lives here later. */
-const migrations: Record<number, (old: unknown) => BuilderDocument> = {};
-
-export function loadDocument(): BuilderDocument | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as BuilderDocument;
-    if (parsed.schemaVersion === SCHEMA_VERSION) return parsed;
-
-    let migrated: unknown = parsed;
-    for (let v = parsed.schemaVersion; v < SCHEMA_VERSION; v++) {
-      const migrate = migrations[v];
-      if (!migrate) return null;
-      migrated = migrate(migrated);
-    }
-    return migrated as BuilderDocument;
-  } catch {
-    return null;
-  }
+/** Placeholder shown only until `loadOrCreateDocument` resolves; nothing reads it before then. */
+export function createEmptyDocument(): BuilderDocument {
+  return { id: "", name: "", schemaVersion: 1, pages: {}, activePageId: "" };
 }
 
-let saveTimer: ReturnType<typeof setTimeout> | null = null;
+/**
+ * Seeds a brand-new blank page with the same starter content the app used to
+ * create locally (nav-bar + hero-section) — done via the nodes API, since only
+ * the frontend's block registry knows these blocks' default props/children.
+ */
+async function seedStarterContent(
+  documentId: string,
+  pageId: string,
+  rootId: string
+): Promise<void> {
+  await nodesApi.insertNode(documentId, pageId, rootId, createSeedNode("nav-bar"));
+  await nodesApi.insertNode(documentId, pageId, rootId, createSeedNode("hero-section"));
+}
 
-export function saveDocument(document: BuilderDocument): void {
-  if (typeof window === "undefined") return;
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(document));
-    } catch {
-      // localStorage unavailable (private mode / quota) — silently skip persistence.
-    }
-  }, AUTOSAVE_DELAY_MS);
+/**
+ * Loads the current user's document, creating one (with starter content) the
+ * first time they ever hydrate. Per-user document management stays this simple
+ * for now — one auto-managed document per account, matching the app's existing
+ * single-project UX; a documents picker can be layered on later.
+ */
+export async function loadOrCreateDocument(): Promise<BuilderDocument> {
+  const summaries = await documentsApi.listDocuments();
+  if (summaries.length > 0) {
+    return documentsApi.getDocument(summaries[0].id);
+  }
+
+  const created = await documentsApi.createDocument("My Site");
+  const homePage = created.pages[created.activePageId];
+  await seedStarterContent(created.id, homePage.id, homePage.rootId);
+  return documentsApi.getDocument(created.id);
 }

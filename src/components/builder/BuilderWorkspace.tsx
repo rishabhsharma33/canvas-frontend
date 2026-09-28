@@ -24,6 +24,9 @@ import { PropertyPanel } from "./PropertyPanel";
 export function BuilderWorkspace() {
   const hydrate = useBuilderStore((s) => s.hydrate);
   const hydrated = useBuilderStore((s) => s.hydrated);
+  const hydrationError = useBuilderStore((s) => s.hydrationError);
+  const syncError = useBuilderStore((s) => s.syncError);
+  const dismissSyncError = useBuilderStore((s) => s.dismissSyncError);
   const isPreviewMode = useBuilderStore((s) => s.isPreviewMode);
   const activeDragId = useBuilderStore((s) => s.activeDragId);
   const setActiveDrag = useBuilderStore((s) => s.setActiveDrag);
@@ -107,6 +110,20 @@ export function BuilderWorkspace() {
     return node ? getBlockDefinition(node.type).label : null;
   })();
 
+  if (hydrationError) {
+    return (
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+        <p className="text-destructive">{hydrationError}</p>
+        <button
+          className="rounded-md border px-3 py-1.5 text-foreground hover:bg-muted"
+          onClick={() => hydrate()}
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
   if (!hydrated) {
     return (
       <div className="flex h-screen w-full items-center justify-center text-sm text-muted-foreground">
@@ -124,6 +141,17 @@ export function BuilderWorkspace() {
     >
       <div className="flex h-screen w-full flex-col">
         <Toolbar />
+        {syncError && (
+          <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-destructive/10 px-3 py-1.5 text-xs text-destructive">
+            <span>{syncError}</span>
+            <button
+              className="shrink-0 underline hover:no-underline"
+              onClick={dismissSyncError}
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         <div className="flex min-h-0 flex-1 overflow-hidden">
           {!isPreviewMode && <Palette />}
           <Canvas />

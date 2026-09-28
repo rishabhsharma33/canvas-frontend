@@ -187,3 +187,54 @@ export function updateNodeProps(
     updatedAt: new Date().toISOString(),
   };
 }
+
+/**
+ * Builds a local-id -> server-id map by walking two structurally-identical
+ * subtrees in lockstep (same shape, since the server materialized the exact
+ * same seed/clone the client did locally) — used to reconcile a client-generated
+ * id with the real one the backend assigned once its response comes back.
+ */
+export function buildIdReconciliationMap(
+  localNodes: Record<string, BuilderNode>,
+  localRootId: string,
+  serverNodes: Record<string, BuilderNode>,
+  serverRootId: string
+): Record<string, string> {
+  const map: Record<string, string> = {};
+
+  function walk(localId: string, serverId: string) {
+    map[localId] = serverId;
+    const localNode = localNodes[localId];
+    const serverNode = serverNodes[serverId];
+    if (!localNode || !serverNode) return;
+    localNode.children.forEach((childLocalId, index) => {
+      const childServerId = serverNode.children[index];
+      if (childServerId) walk(childLocalId, childServerId);
+    });
+  }
+
+  walk(localRootId, serverRootId);
+  return map;
+}
+
+/** Rewrites every node id (map keys, parentId, children arrays) in a page through an id map. */
+export function remapNodeIds(
+  page: BuilderPage,
+  idMap: Record<string, string>
+): BuilderPage {
+  if (Object.keys(idMap).length === 0) return page;
+  const remap = (id: string) => idMap[id] ?? id;
+
+  const nodes: Record<string, BuilderNode> = {};
+  for (const node of Object.values(page.nodes)) {
+    const newId = remap(node.id);
+    nodes[newId] = {
+      ...node,
+      id: newId,
+      parentId: node.parentId ? remap(node.parentId) : null,
+      children: node.children.map(remap),
+    };
+  }
+
+  return { ...page, nodes, rootId: remap(page.rootId) };
+}
